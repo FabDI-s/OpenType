@@ -1,4 +1,4 @@
-import { getSessions, getAllKeystrokes } from './db.js';
+import { getSessions, getAllKeystrokes, getKeystrokes } from './db.js';
 
 // ── Navigation ──────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ function getCharErrorRate(keystrokes) {
   }
   const rates = {};
   for (const [ch, d] of Object.entries(map)) {
-    rates[ch] = d.total >= 3 ? d.errors / d.total : 0;
+    rates[ch] = { rate: d.total >= 3 ? d.errors / d.total : 0, total: d.total };
   }
   return rates;
 }
@@ -86,6 +86,35 @@ function getWeakBigrams(keystrokes) {
     .slice(0, 10);
 }
 
+function getWordTimings(keystrokes) {
+  if (!keystrokes.length) return [];
+  const words = [];
+  let wordStart = null;
+  let wordText = '';
+  let hasError = false;
+
+  for (const k of keystrokes) {
+    if (k.expected === ' ' || k.expected === '\n') {
+      if (wordText.length > 0 && wordStart !== null) {
+        words.push({ word: wordText, durationMs: k.timestampMs - wordStart, hasError });
+      }
+      wordText = '';
+      wordStart = null;
+      hasError = false;
+    } else {
+      if (wordStart === null) wordStart = k.timestampMs;
+      wordText += k.expected;
+      if (!k.correct) hasError = true;
+    }
+  }
+  // last word (no trailing space)
+  const last = keystrokes[keystrokes.length - 1];
+  if (wordText.length > 0 && wordStart !== null) {
+    words.push({ word: wordText, durationMs: last.timestampMs - wordStart, hasError });
+  }
+  return words;
+}
+
 // ── Render ───────────────────────────────────────────────────
 
 async function renderAnalytics() {
@@ -95,6 +124,14 @@ async function renderAnalytics() {
   renderHeatmap(getCharErrorRate(keystrokes));
   renderWeakWords(getWeakWords(keystrokes));
   renderBigrams(getWeakBigrams(keystrokes));
+
+  // Word timing for the most recent session
+  if (sessions.length > 0) {
+    const latestKs = await getKeystrokes(sessions[0].id);
+    renderWordTimingChart(getWordTimings(latestKs));
+  } else {
+    renderWordTimingChart([]);
+  }
 }
 
 function renderWpmChart(data) {
@@ -169,6 +206,88 @@ function renderWpmChart(data) {
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
 }
 
+function renderWordTimingChart(words) {
+  const svg = document.getElementById('word-timing-chart');
+  const empty = document.getElementById('word-timing-empty');
+  svg.innerHTML = '';
+
+  if (words.length === 0) {
+    svg.style.display = 'none';
+    empty.style.display = '';
+    return;
+  }
+  svg.style.display = '';
+  empty.style.display = 'none';
+
+  const W = svg.clientWidth || 700;
+  const H = 140;
+  const pad = { top: 10, right: 16, bottom: 32, left: 44 };
+  const iW = W - pad.left - pad.right;
+  const iH = H - pad.top - pad.bottom;
+
+  const durations = words.map(w => w.durationMs);
+  const maxD = Math.max(...durations);
+  const barW = Math.max(2, Math.min(28, (iW / words.length) - 2));
+
+  // Y-axis labels (seconds)
+  [0, maxD * 0.5, maxD].forEach(val => {
+    const y = pad.top + iH - (val / maxD) * iH;
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', pad.left - 6);
+    t.setAttribute('y', y + 4);
+    t.setAttribute('text-anchor', 'end');
+    t.setAttribute('font-size', '10');
+    t.setAttribute('fill', 'rgba(255,255,255,0.25)');
+    t.setAttribute('font-family', 'JetBrains Mono, monospace');
+    t.textContent = (val / 1000).toFixed(1) + 's';
+    svg.appendChild(t);
+
+    // gridline
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', pad.left); line.setAttribute('x2', pad.left + iW);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'rgba(255,255,255,0.05)');
+    line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+  });
+
+  words.forEach((w, i) => {
+    const x = pad.left + (i / words.length) * iW + (iW / words.length - barW) / 2;
+    const barH = (w.durationMs / maxD) * iH;
+    const y = pad.top + iH - barH;
+
+    const fill = w.hasError ? 'rgba(184,64,64,0.7)' : 'rgba(212,148,58,0.55)';
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y);
+    rect.setAttribute('width', barW);
+    rect.setAttribute('height', barH);
+    rect.setAttribute('fill', fill);
+    rect.setAttribute('rx', '2');
+
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = `"${w.word}" — ${(w.durationMs / 1000).toFixed(2)}s${w.hasError ? ' (Fehler)' : ''}`;
+    rect.appendChild(title);
+    svg.appendChild(rect);
+
+    // word label below bar (only if bars wide enough)
+    if (barW >= 12) {
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', x + barW / 2);
+      t.setAttribute('y', pad.top + iH + 14);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-size', '9');
+      t.setAttribute('fill', 'rgba(255,255,255,0.2)');
+      t.setAttribute('font-family', 'JetBrains Mono, monospace');
+      t.textContent = w.word.length > 6 ? w.word.slice(0, 5) + '…' : w.word;
+      svg.appendChild(t);
+    }
+  });
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+}
+
 const QWERTZ = [
   ['q','w','e','r','t','z','u','i','o','p','ü'],
   ['a','s','d','f','g','h','j','k','l','ö','ä'],
@@ -179,7 +298,15 @@ function renderHeatmap(rates) {
   const container = document.getElementById('heatmap');
   container.innerHTML = '';
 
-  const maxRate = Math.max(...Object.values(rates), 0.01);
+  // heat scale: 0 = untouched, 1-2 = green (good), 3 = amber (ok), 4-5 = red (bad)
+  function heatLevel(rate, total) {
+    if (total < 3) return 0;
+    if (rate <= 0.05) return 1;
+    if (rate <= 0.15) return 2;
+    if (rate <= 0.35) return 3;
+    if (rate <= 0.60) return 4;
+    return 5;
+  }
 
   QWERTZ.forEach(row => {
     const rowEl = document.createElement('div');
@@ -188,13 +315,12 @@ function renderHeatmap(rates) {
       const el = document.createElement('div');
       el.className = 'hkey';
       el.textContent = key;
-      const rate = rates[key] || 0;
-      const heat = rate === 0 ? 0
-        : rate < maxRate * 0.25 ? 1
-        : rate < maxRate * 0.5  ? 2
-        : rate < maxRate * 0.75 ? 3 : 4;
+      const stat = rates[key] || { rate: 0, total: 0 };
+      const heat = heatLevel(stat.rate, stat.total);
       el.dataset.heat = heat;
-      if (rate > 0) el.title = `${key}: ${Math.round(rate * 100)}% Fehler`;
+      if (stat.total >= 3) {
+        el.title = `${key}: ${Math.round(stat.rate * 100)}% Fehler (${stat.total}×)`;
+      }
       rowEl.appendChild(el);
     });
     container.appendChild(rowEl);

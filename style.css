@@ -31,16 +31,16 @@
   --red-dim: rgba(160,40,40,0.1);
 }
 
-html, body {
-  height: 100%;
+html {
+  background: var(--bg);
+}
+
+body {
   background: var(--bg);
   color: var(--text-base);
   font-family: var(--sans);
   font-weight: 300;
   overscroll-behavior: none;
-}
-
-body {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -403,9 +403,10 @@ nav {
 
 /* WPM Chart */
 
-#wpm-chart {
+#wpm-chart,
+#word-timing-chart {
   width: 100%;
-  height: 120px;
+  height: 140px;
   display: block;
 }
 
@@ -437,11 +438,13 @@ nav {
   position: relative;
 }
 
-.hkey[data-rate="0"] { background: var(--surface); }
-.hkey[data-heat="1"] { background: rgba(212,148,58,0.15); color: var(--text-base); }
-.hkey[data-heat="2"] { background: rgba(212,148,58,0.35); color: var(--text-hi); }
-.hkey[data-heat="3"] { background: rgba(184,64,64,0.35); color: var(--text-hi); }
-.hkey[data-heat="4"] { background: rgba(184,64,64,0.65); color: #fff; }
+/* 0 = untouched, 1-2 = green, 3 = amber, 4-5 = red */
+.hkey[data-heat="0"] { background: var(--surface); color: var(--text-dim); }
+.hkey[data-heat="1"] { background: rgba(80,180,100,0.55); color: #fff; }
+.hkey[data-heat="2"] { background: rgba(80,180,100,0.28); color: var(--text-hi); }
+.hkey[data-heat="3"] { background: rgba(212,148,58,0.45); color: var(--text-hi); }
+.hkey[data-heat="4"] { background: rgba(184,64,64,0.45); color: var(--text-hi); }
+.hkey[data-heat="5"] { background: rgba(184,64,64,0.75); color: #fff; }
 
 /* Weak words table */
 
