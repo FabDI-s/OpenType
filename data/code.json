@@ -1,0 +1,12 @@
+[
+  { "id": "code_0", "text": "const fetchData = async (url) => { const res = await fetch(url); return res.json(); };" },
+  { "id": "code_1", "text": "function debounce(fn, delay) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }" },
+  { "id": "code_2", "text": "const wpm = Math.round((chars / 5) / (elapsed / 60000));" },
+  { "id": "code_3", "text": "document.querySelectorAll('.char').forEach((el, i) => el.classList.toggle('active', i === cursor));" },
+  { "id": "code_4", "text": "const accuracy = Math.round(((total - errors) / total) * 100);" },
+  { "id": "code_5", "text": "git commit -m 'feat: add local typing speed tracker with wpm and accuracy metrics'" },
+  { "id": "code_6", "text": "esphome run blind_motor.yaml --device 192.168.1.42" },
+  { "id": "code_7", "text": "ollama run llama3.2 --verbose 2>&1 | grep 'eval rate'" },
+  { "id": "code_8", "text": "ffmpeg -i input.mp4 -vf 'scale=1920:-1' -crf 18 -preset slow output.mp4" },
+  { "id": "code_9", "text": "tailscale up --accept-routes --ssh --operator=$(whoami)" }
+]

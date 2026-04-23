@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenType</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <nav>
+    <div class="logo">open<span>type</span></div>
+    <div class="nav-links">
+      <button class="nav-btn active" data-view="typing">tippen</button>
+      <button class="nav-btn" data-view="analytics">analyse</button>
+    </div>
+  </nav>
+
+  <!-- ── Tippen ── -->
+  <div id="typing-view">
+    <div id="stats">
+      <div class="stat">
+        <span class="stat-value" id="wpm-display">–</span>
+        <span class="stat-label">wpm</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="acc-display">–</span>
+        <span class="stat-label">acc</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="time-display">–</span>
+        <span class="stat-label">sek</span>
+      </div>
+    </div>
+
+    <div id="text-display" tabindex="0">
+      <div id="text-chars"></div>
+      <div id="focus-hint">klicken zum Starten</div>
+    </div>
+
+    <div id="attribution">
+      <span id="attr-title"></span>
+      <div id="attr-sep"></div>
+      <span id="attr-author"></span>
+      <span id="attr-year"></span>
+      <button id="attr-more">suchen ↗</button>
+    </div>
+
+    <div id="progress-track"><div id="progress-bar"></div></div>
+
+    <div id="controls">
+      <div class="mode-btns">
+        <button class="mode-btn active" data-mode="de">deutsch</button>
+        <button class="mode-btn" data-mode="en">english</button>
+        <button class="mode-btn" data-mode="code">code</button>
+        <button class="mode-btn" data-mode="zitate">zitate</button>
+        <button class="mode-btn" data-mode="klappentexte">klappentexte</button>
+      </div>
+      <div class="right-controls">
+        <button class="btn" id="new-btn"><kbd>Tab</kbd> neuer Text</button>
+        <div class="sep"></div>
+        <button class="btn" id="theme-btn">hell / dunkel</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Ergebnis ── -->
+  <div id="result">
+    <div>
+      <div class="result-wpm" id="r-wpm">0</div>
+      <div class="result-label">wörter pro minute</div>
+    </div>
+    <div class="result-stats">
+      <div class="result-stat"><div class="val" id="r-acc">–</div><div class="lbl">genauigkeit</div></div>
+      <div class="result-stat"><div class="val" id="r-time">–</div><div class="lbl">zeit</div></div>
+      <div class="result-stat"><div class="val" id="r-kpm">–</div><div class="lbl">tasten / min</div></div>
+      <div class="result-stat"><div class="val" id="r-err">–</div><div class="lbl">fehler</div></div>
+    </div>
+    <div id="result-source">
+      <div class="rs-title" id="rs-title"></div>
+      <div class="rs-author" id="rs-author"></div>
+      <button class="rs-search" id="rs-search">in der Bibliothek oder online suchen ↗</button>
+    </div>
+    <button class="btn-restart" id="restart-btn">↺ &nbsp;nochmal</button>
+  </div>
+
+  <!-- ── Analyse ── -->
+  <div id="analytics-view">
+
+    <div class="analytics-section">
+      <div class="analytics-title">WPM-Verlauf</div>
+      <svg id="wpm-chart"></svg>
+      <p class="analytics-empty" id="wpm-empty" style="display:none">Noch keine Sessions aufgezeichnet.</p>
+    </div>
+
+    <div class="analytics-section">
+      <div class="analytics-title">Fehler-Heatmap</div>
+      <div class="heatmap" id="heatmap"></div>
+    </div>
+
+    <div class="analytics-section">
+      <div class="analytics-title">Schwächste Wörter</div>
+      <table class="weak-table" id="weak-words-table">
+        <thead><tr><th>Wort</th><th>Fehler</th><th>Fehlerrate</th></tr></thead>
+        <tbody id="weak-words-body"></tbody>
+      </table>
+      <p class="analytics-empty" id="words-empty" style="display:none">Noch keine Daten.</p>
+    </div>
+
+    <div class="analytics-section">
+      <div class="analytics-title">Schwächste Bigramme</div>
+      <table class="weak-table" id="bigram-table">
+        <thead><tr><th>Bigramm</th><th>Fehler</th><th>Fehlerrate</th></tr></thead>
+        <tbody id="bigram-body"></tbody>
+      </table>
+      <p class="analytics-empty" id="bigram-empty" style="display:none">Noch keine Daten.</p>
+    </div>
+
+    <button class="btn-practice" id="practice-btn">⌨ gezielt üben</button>
+
+  </div>
+
+</div>
+
+<input type="text" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+<script type="module" src="app.js"></script>
+<script type="module" src="analytics.js"></script>
+</body>
+</html>

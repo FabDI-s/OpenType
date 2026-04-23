@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>typespeed</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@300;400&family=Lora:ital,wght@0,400;0,500;1,400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0f;
+    --surface: #161618;
+    --border: rgba(255,255,255,0.07);
+    --text-dim: rgba(255,255,255,0.18);
+    --text-muted: rgba(255,255,255,0.38);
+    --text-base: rgba(255,255,255,0.72);
+    --text-hi: #f0ece4;
+    --amber: #d4943a;
+    --amber-dim: rgba(212,148,58,0.12);
+    --red: #b84040;
+    --red-dim: rgba(184,64,64,0.22);
+    --mono: 'JetBrains Mono', monospace;
+    --serif: 'Lora', serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-base);
+    font-family: var(--sans);
+    font-weight: 300;
+    overscroll-behavior: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  #app { width: 100%; max-width: 760px; }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 3rem;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+  }
+  .logo span { color: var(--text-muted); }
+
+  .header-hint { font-size: 12px; color: var(--text-dim); letter-spacing: 0.04em; }
+
+  #stats {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    height: 28px;
+    align-items: flex-end;
+  }
+
+  .stat { display: flex; align-items: baseline; gap: 6px; }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text-hi);
+    line-height: 1;
+    min-width: 3ch;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  #text-display {
+    position: relative;
+    margin-bottom: 1.25rem;
+    min-height: 80px;
+    cursor: text;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #text-chars {
+    font-size: 20px;
+    font-weight: 300;
+    line-height: 1.9;
+    letter-spacing: 0.01em;
+    color: var(--text-dim);
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    display: block;
+    width: 100%;
+    font-family: var(--mono);
+  }
+
+  #text-chars.lit-font {
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 2.05;
+    letter-spacing: 0.02em;
+  }
+
+  .char { transition: color 0.05s; }
+  .char.correct { color: var(--text-base); }
+  .char.wrong { color: var(--red); background: var(--red-dim); border-radius: 2px; }
+  .char.current { color: var(--amber); position: relative; }
+  .char.current::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0;
+    width: 100%; height: 1.5px;
+    background: var(--amber);
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  #hidden-input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+
+  /* ATTRIBUTION */
+  #attribution {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 0.5s, transform 0.5s;
+    transform: translateY(4px);
+  }
+
+  #attribution.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #attr-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  #attr-sep {
+    width: 1px; height: 12px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  #attr-author {
+    font-size: 13px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  #attr-year {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  #attr-more {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--amber);
+    background: none;
+    border: 1px solid rgba(212,148,58,0.25);
+    border-radius: 3px;
+    padding: 3px 10px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #attr-more:hover { background: var(--amber-dim); border-color: rgba(212,148,58,0.6); }
+
+  #progress-track {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+
+  #progress-bar {
+    height: 100%;
+    background: var(--amber);
+    width: 0%;
+    transition: width 0.1s linear;
+    opacity: 0.6;
+  }
+
+  #controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .mode-btns { display: flex; }
+
+  .mode-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    letter-spacing: 0.08em;
+    transition: color 0.15s;
+    border-bottom: 1px solid transparent;
+  }
+  .mode-btn:hover { color: var(--text-muted); }
+  .mode-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+  .right-controls { display: flex; align-items: center; gap: 1rem; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    padding: 6px 0;
+    transition: color 0.15s;
+  }
+  .btn:hover { color: var(--text-hi); }
+  .btn kbd {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .sep { width: 1px; height: 16px; background: var(--border); }
+
+  #focus-hint {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    color: var(--text-dim);
+    background: rgba(14,14,15,0.6);
+    backdrop-filter: blur(2px);
+    border-radius: 4px;
+    transition: opacity 0.2s;
+    opacity: 0;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+  }
+  #text-display:not(.focused) #focus-hint { opacity: 1; pointer-events: all; cursor: pointer; }
+
+  /* RESULT */
+  #result { display: none; flex-direction: column; align-items: center; text-align: center; gap: 2rem; }
+  #result.visible { display: flex; }
+
+  .result-wpm {
+    font-family: var(--mono);
+    font-size: 80px;
+    font-weight: 300;
+    color: var(--amber);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .result-label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .result-stats { display: flex; gap: 3rem; }
+  .result-stat { display: flex; flex-direction: column; gap: 4px; }
+  .result-stat .val { font-family: var(--mono); font-size: 24px; font-weight: 400; color: var(--text-hi); }
+  .result-stat .lbl { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  #result-source {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 1.25rem 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  #result-source.visible { display: flex; }
+  .rs-title { font-family: var(--serif); font-style: italic; font-size: 18px; color: var(--text-base); }
+  .rs-author { font-size: 13px; color: var(--text-muted); }
+  .rs-search {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--amber);
+    background: none;
+    border: 1px solid rgba(212,148,58,0.25);
+    border-radius: 3px;
+    padding: 4px 12px;
+    cursor: pointer;
+    margin-top: 6px;
+    letter-spacing: 0.04em;
+    transition: background 0.15s;
+  }
+  .rs-search:hover { background: var(--amber-dim); }
+
+  .btn-restart {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--amber);
+    background: none;
+    border: 1px solid rgba(212,148,58,0.3);
+    border-radius: 4px;
+    padding: 10px 24px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-restart:hover { background: var(--amber-dim); border-color: var(--amber); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">type<span>speed</span></div>
+    <div class="header-hint">klicken · tippen · fertig</div>
+  </header>
+
+  <div id="typing-view">
+    <div id="stats">
+      <div class="stat"><span class="stat-value" id="wpm-display">–</span><span class="stat-label">wpm</span></div>
+      <div class="stat"><span class="stat-value" id="acc-display">–</span><span class="stat-label">acc</span></div>
+      <div class="stat"><span class="stat-value" id="time-display">–</span><span class="stat-label">sek</span></div>
+    </div>
+
+    <div id="text-display" tabindex="0">
+      <div id="text-chars"></div>
+      <div id="focus-hint">klicken zum Starten</div>
+    </div>
+
+    <div id="attribution">
+      <span id="attr-title"></span>
+      <div id="attr-sep"></div>
+      <span id="attr-author"></span>
+      <span id="attr-year"></span>
+      <button id="attr-more">suchen ↗</button>
+    </div>
+
+    <div id="progress-track"><div id="progress-bar"></div></div>
+
+    <div id="controls">
+      <div class="mode-btns">
+        <button class="mode-btn active" data-mode="de">deutsch</button>
+        <button class="mode-btn" data-mode="en">english</button>
+        <button class="mode-btn" data-mode="literatur">literatur</button>
+        <button class="mode-btn" data-mode="code">code</button>
+      </div>
+      <div class="right-controls">
+        <button class="btn" id="new-btn"><kbd>Tab</kbd> neuer Text</button>
+        <div class="sep"></div>
+        <button class="btn" id="theme-btn">hell / dunkel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="result">
+    <div>
+      <div class="result-wpm" id="r-wpm">0</div>
+      <div class="result-label">wörter pro minute</div>
+    </div>
+    <div class="result-stats">
+      <div class="result-stat"><div class="val" id="r-acc">–</div><div class="lbl">Genauigkeit</div></div>
+      <div class="result-stat"><div class="val" id="r-time">–</div><div class="lbl">Zeit</div></div>
+      <div class="result-stat"><div class="val" id="r-chars">–</div><div class="lbl">Zeichen</div></div>
+      <div class="result-stat"><div class="val" id="r-err">–</div><div class="lbl">Fehler</div></div>
+    </div>
+    <div id="result-source">
+      <div class="rs-title" id="rs-title"></div>
+      <div class="rs-author" id="rs-author"></div>
+      <button class="rs-search" id="rs-search">in der Bibliothek oder online suchen ↗</button>
+    </div>
+    <button class="btn-restart" id="restart-btn">↺ &nbsp;nochmal</button>
+  </div>
+</div>
+
+<input type="text" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+<script>
+const TEXTS = {
+  de: [
+    { text: "Die schnelle Entwicklung der künstlichen Intelligenz verändert unsere Welt in einem Tempo, das kaum jemand vorhergesehen hat." },
+    { text: "Wer rastet, der rostet. Ein alter Grundsatz, der auch im digitalen Zeitalter nichts von seiner Gültigkeit verloren hat." },
+    { text: "Das Geheimnis des Könnens liegt im Tun. Wer etwas meistern will, muss bereit sein, Fehler zu machen und aus ihnen zu lernen." },
+    { text: "Logistik ist das Rückgrat moderner Wirtschaft. Ohne zuverlässige Lieferketten käme der globale Handel innerhalb weniger Tage zum Stillstand." },
+    { text: "Fahrradfahren ist mehr als Sport — es ist eine Art, die Welt zu entschleunigen und den Moment vollständig zu erleben." },
+    { text: "Automatisierung beginnt mit einem guten Verständnis des Prozesses. Wer seinen Workflow kennt, kann ihn effizient digitalisieren." },
+    { text: "Die Qualität einer Entscheidung hängt oft weniger von der Information als von der Klarheit des Denkens ab." },
+    { text: "Heimautomatisierung schafft nicht nur Komfort, sondern gibt einem das Gefühl, die eigene Umgebung wirklich zu kontrollieren." },
+    { text: "Geduld ist keine Passivität. Sie ist die aktive Entscheidung, dem richtigen Moment zu vertrauen und ihn abzuwarten." },
+    { text: "In der Stille liegt eine besondere Kraft. Wer gelernt hat zu schweigen und zu beobachten, sieht die Welt oft klarer als andere." },
+  ],
+  en: [
+    { text: "The art of programming is the art of organizing complexity. A good programmer thinks clearly before writing a single line of code." },
+    { text: "Every expert was once a beginner. The difference lies in the willingness to persist through frustration and keep learning every single day." },
+    { text: "Speed is a skill, not a talent. With deliberate practice and focused repetition, almost anyone can learn to type significantly faster." },
+    { text: "Home automation is less about gadgets and more about understanding systems and making them work seamlessly together." },
+    { text: "The gravel road ahead disappears into the morning fog. Two hundred kilometers remain. The legs remember why they trained for this." },
+    { text: "Simplicity is the ultimate sophistication. Removing what is unnecessary takes more courage than adding what merely seems useful." },
+    { text: "A local model running on your own hardware is private, fast, and entirely yours. No API key, no subscription required." },
+    { text: "Logistics is invisible when it works perfectly, and all you can see when it does not. That is the nature of good infrastructure." },
+    { text: "Focus is not about doing more things at once. It is about eliminating everything that does not deserve your full attention right now." },
+    { text: "Good design is not decoration. It is the clarity of function made visible, and the removal of everything that obscures that function." },
+  ],
+  literatur: [
+    {
+      text: "Als Gregor Samsa eines Morgens aus unruhigen Träumen erwachte, fand er sich in seinem Bett zu einem ungeheueren Ungeziefer verwandelt.",
+      title: "Die Verwandlung",
+      author: "Franz Kafka",
+      year: "1915",
+      search: "Franz Kafka Die Verwandlung Buch"
+    },
+    {
+      text: "Zwei Seelen wohnen, ach! in meiner Brust, die eine will sich von der andern trennen; die eine hält, in derber Liebeslust, sich an die Welt mit klammernden Organen.",
+      title: "Faust. Der Tragödie erster Teil",
+      author: "Johann Wolfgang von Goethe",
+      year: "1808",
+      search: "Goethe Faust Reclam"
+    },
+    {
+      text: "So, also hierher kommen die Leute, um zu leben, ich würde eher meinen, es stürbe sich hier. Ich bin ausgewesen. Ich habe diese Auslassung gesehen: der Tod zu Lebzeiten.",
+      title: "Die Aufzeichnungen des Malte Laurids Brigge",
+      author: "Rainer Maria Rilke",
+      year: "1910",
+      search: "Rilke Malte Laurids Brigge Insel Verlag"
+    },
+    {
+      text: "Ich lehre euch den Übermenschen. Der Mensch ist etwas, das überwunden werden soll. Was habt ihr getan, ihn zu überwinden? Alle Wesen bisher schufen etwas über sich hinaus.",
+      title: "Also sprach Zarathustra",
+      author: "Friedrich Nietzsche",
+      year: "1883",
+      search: "Nietzsche Also sprach Zarathustra Buch"
+    },
+    {
+      text: "Auf dem großen Passagierdampfer, der um Mitternacht New York verlassen sollte, herrschte die übliche Abschiedsunruhe und -geschäftigkeit der letzten Stunde.",
+      title: "Schachnovelle",
+      author: "Stefan Zweig",
+      year: "1942",
+      search: "Stefan Zweig Schachnovelle Fischer Verlag"
+    },
+    {
+      text: "Ein Fünfzehnjähriger verliebt sich in eine ältere Frau, die ihn bittet, ihr vorzulesen. Was als Sommer der ersten großen Liebe beginnt, wird ihn sein ganzes Leben nicht mehr loslassen — und wird ihm eine Frage stellen, auf die es keine einfache Antwort gibt.",
+      title: "Der Vorleser",
+      author: "Bernhard Schlink",
+      year: "1995",
+      search: "Bernhard Schlink Der Vorleser Diogenes"
+    },
+    {
+      text: "Maik Klingenberg verbringt einen trostlosen Sommer, bis Andrej Tschichatschow auftaucht. Mit einem gestohlenen Lada und ohne jeden Plan starten die beiden in ein Abenteuer quer durch die ostdeutsche Provinz.",
+      title: "Tschick",
+      author: "Wolfgang Herrndorf",
+      year: "2010",
+      search: "Wolfgang Herrndorf Tschick Rowohlt"
+    },
+    {
+      text: "Eine Frau erwacht und findet sich von einer unsichtbaren Wand von der Außenwelt abgeschnitten. Allein mit einem Hund, einer Katze und einer Kuh muss sie lernen zu überleben — und zu begreifen, was Einsamkeit wirklich bedeutet.",
+      title: "Die Wand",
+      author: "Marlen Haushofer",
+      year: "1963",
+      search: "Marlen Haushofer Die Wand List Verlag"
+    },
+    {
+      text: "Im Berlin der Nachwendezeit kämpft eine Gruppe junger Freunde um ihre Träume, ihre Lieben und ihren Platz in einer Stadt, die sich selbst gerade neu erfindet. Sven Regeners Roman ist eine Hommage an eine Zeit, die es so nie wieder geben wird.",
+      title: "Herr Lehmann",
+      author: "Sven Regener",
+      year: "2001",
+      search: "Sven Regener Herr Lehmann Goldmann"
+    },
+    {
+      text: "Arno Geiger erzählt die Geschichte seines an Demenz erkrankten Vaters mit so viel Zärtlichkeit und Genauigkeit, dass das Buch weit über ein persönliches Dokument hinausgeht — es ist eine Meditation über Zeit, Vergessen und das, was uns wirklich ausmacht.",
+      title: "Der alte König in seinem Exil",
+      author: "Arno Geiger",
+      year: "2011",
+      search: "Arno Geiger Der alte König in seinem Exil Hanser"
+    },
+  ],
+  code: [
+    { text: "const fetchData = async (url) => { const res = await fetch(url); return res.json(); };" },
+    { text: "function debounce(fn, delay) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }" },
+    { text: "const wpm = Math.round((chars / 5) / (elapsed / 60000));" },
+    { text: "document.querySelectorAll('.char').forEach((el, i) => el.classList.toggle('active', i === cursor));" },
+    { text: "const accuracy = Math.round(((total - errors) / total) * 100);" },
+    { text: "git commit -m 'feat: add local typing speed tracker with wpm and accuracy metrics'" },
+    { text: "esphome run blind_motor.yaml --device 192.168.1.42" },
+    { text: "ollama run llama3.2 --verbose 2>&1 | grep 'eval rate'" },
+    { text: "ffmpeg -i input.mp4 -vf 'scale=1920:-1' -crf 18 -preset slow output.mp4" },
+    { text: "tailscale up --accept-routes --ssh --operator=$(whoami)" },
+  ],
+};
+
+let mode = 'de';
+let currentEntry = null;
+let chars = [];
+let cursor = 0;
+let errors = 0;
+let totalKeystrokes = 0;
+let startTime = null;
+let timerInterval = null;
+let finished = false;
+let focused = false;
+
+const display = document.getElementById('text-display');
+const charsEl = document.getElementById('text-chars');
+const hiddenInput = document.getElementById('hidden-input');
+const progressBar = document.getElementById('progress-bar');
+const wpmDisplay = document.getElementById('wpm-display');
+const accDisplay = document.getElementById('acc-display');
+const timeDisplay = document.getElementById('time-display');
+const typingView = document.getElementById('typing-view');
+const resultView = document.getElementById('result');
+const attrEl = document.getElementById('attribution');
+
+function pickEntry() {
+  const pool = TEXTS[mode];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function renderText(text) {
+  charsEl.innerHTML = '';
+  chars = text.split('');
+  chars.forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.className = 'char' + (i === 0 ? ' current' : '');
+    span.textContent = ch;
+    charsEl.appendChild(span);
+  });
+}
+
+function showAttribution(entry) {
+  document.getElementById('attr-title').textContent = entry.title;
+  document.getElementById('attr-author').textContent = entry.author;
+  document.getElementById('attr-year').textContent = entry.year ? '(' + entry.year + ')' : '';
+  document.getElementById('attr-more').onclick = () => {
+    const q = encodeURIComponent(entry.search || (entry.title + ' ' + entry.author));
+    window.open('https://www.google.com/search?q=' + q, '_blank');
+  };
+  attrEl.style.display = 'flex';
+  requestAnimationFrame(() => { attrEl.classList.add('show'); });
+}
+
+function reset() {
+  clearInterval(timerInterval);
+  cursor = 0; errors = 0; totalKeystrokes = 0;
+  startTime = null; finished = false;
+
+  currentEntry = pickEntry();
+  renderText(currentEntry.text);
+
+  charsEl.classList.toggle('lit-font', mode === 'literatur');
+
+  attrEl.classList.remove('show');
+  attrEl.style.display = 'none';
+  if (currentEntry.title) showAttribution(currentEntry);
+
+  progressBar.style.width = '0%';
+  wpmDisplay.textContent = '–';
+  accDisplay.textContent = '–';
+  timeDisplay.textContent = '–';
+
+  typingView.style.display = '';
+  resultView.classList.remove('visible');
+  hiddenInput.value = '';
+  if (focused) focusInput();
+}
+
+function focusInput() {
+  hiddenInput.focus();
+  display.classList.add('focused');
+  focused = true;
+}
+
+function getSpans() { return charsEl.querySelectorAll('.char'); }
+
+function updateCursor() {
+  const spans = getSpans();
+  spans.forEach(s => s.classList.remove('current'));
+  if (cursor < spans.length) spans[cursor].classList.add('current');
+}
+
+function calcWpm() {
+  if (!startTime) return 0;
+  const elapsed = (Date.now() - startTime) / 60000;
+  return Math.max(0, Math.round((cursor / 5) / elapsed));
+}
+
+function calcAcc() {
+  if (totalKeystrokes === 0) return 100;
+  return Math.round(((totalKeystrokes - errors) / totalKeystrokes) * 100);
+}
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    if (!startTime || finished) return;
+    timeDisplay.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
+    wpmDisplay.textContent = calcWpm();
+    accDisplay.textContent = calcAcc() + '%';
+  }, 100);
+}
+
+function finish() {
+  finished = true;
+  clearInterval(timerInterval);
+  display.classList.remove('focused');
+
+  const elapsed = (Date.now() - startTime) / 1000;
+  const wpm = Math.round((chars.length / 5) / (elapsed / 60));
+
+  document.getElementById('r-wpm').textContent = wpm;
+  document.getElementById('r-acc').textContent = calcAcc() + '%';
+  document.getElementById('r-time').textContent = elapsed.toFixed(1) + 's';
+  document.getElementById('r-chars').textContent = chars.length;
+  document.getElementById('r-err').textContent = errors;
+
+  const srcBlock = document.getElementById('result-source');
+  if (currentEntry.title) {
+    document.getElementById('rs-title').textContent = currentEntry.title;
+    document.getElementById('rs-author').textContent = currentEntry.author + (currentEntry.year ? ' · ' + currentEntry.year : '');
+    document.getElementById('rs-search').onclick = () => {
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(currentEntry.search || currentEntry.title + ' ' + currentEntry.author), '_blank');
+    };
+    srcBlock.classList.add('visible');
+  } else {
+    srcBlock.classList.remove('visible');
+  }
+
+  typingView.style.display = 'none';
+  resultView.classList.add('visible');
+}
+
+hiddenInput.addEventListener('keydown', (e) => {
+  if (finished) return;
+  if (e.key === 'Tab') { e.preventDefault(); reset(); return; }
+
+  if (e.key === 'Backspace') {
+    if (cursor > 0) {
+      cursor--;
+      const spans = getSpans();
+      spans[cursor].classList.remove('correct', 'wrong');
+      updateCursor();
+      progressBar.style.width = (cursor / chars.length * 100) + '%';
+    }
+    return;
+  }
+
+  if (e.key.length !== 1) return;
+
+  if (!startTime) { startTime = Date.now(); startTimer(); }
+
+  totalKeystrokes++;
+  const spans = getSpans();
+
+  if (e.key === chars[cursor]) {
+    spans[cursor].classList.add('correct');
+  } else {
+    spans[cursor].classList.add('wrong');
+    errors++;
+  }
+
+  cursor++;
+  progressBar.style.width = (cursor / chars.length * 100) + '%';
+  if (cursor >= chars.length) { finish(); return; }
+  updateCursor();
+  hiddenInput.value = '';
+});
+
+display.addEventListener('click', () => focusInput());
+hiddenInput.addEventListener('blur', () => { if (!finished) display.classList.remove('focused'); });
+hiddenInput.addEventListener('focus', () => { display.classList.add('focused'); focused = true; });
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    reset();
+  });
+});
+
+document.getElementById('new-btn').addEventListener('click', () => reset());
+document.addEventListener('keydown', (e) => { if (e.key === 'Tab') { e.preventDefault(); reset(); } });
+document.getElementById('restart-btn').addEventListener('click', () => { reset(); focusInput(); });
+
+let lightMode = false;
+document.getElementById('theme-btn').addEventListener('click', () => {
+  lightMode = !lightMode;
+  const r = document.documentElement.style;
+  if (lightMode) {
+    r.setProperty('--bg', '#f7f4ef');
+    r.setProperty('--surface', '#eeeae3');
+    r.setProperty('--border', 'rgba(0,0,0,0.08)');
+    r.setProperty('--text-dim', 'rgba(0,0,0,0.2)');
+    r.setProperty('--text-muted', 'rgba(0,0,0,0.42)');
+    r.setProperty('--text-base', 'rgba(0,0,0,0.7)');
+    r.setProperty('--text-hi', '#1a1a1a');
+    r.setProperty('--red-dim', 'rgba(160,40,40,0.1)');
+  } else {
+    r.setProperty('--bg', '#0e0e0f');
+    r.setProperty('--surface', '#161618');
+    r.setProperty('--border', 'rgba(255,255,255,0.07)');
+    r.setProperty('--text-dim', 'rgba(255,255,255,0.18)');
+    r.setProperty('--text-muted', 'rgba(255,255,255,0.38)');
+    r.setProperty('--text-base', 'rgba(255,255,255,0.72)');
+    r.setProperty('--text-hi', '#f0ece4');
+    r.setProperty('--red-dim', 'rgba(184,64,64,0.22)');
+  }
+});
+
+reset();
+</script>
+</body>
+</html>

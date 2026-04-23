@@ -1,0 +1,9 @@
+.DS_Store
+Thumbs.db
+
+# Local Python server artifacts
+__pycache__/
+
+# Editor / OS clutter
+.vscode/
+.idea/
